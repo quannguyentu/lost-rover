@@ -1,4 +1,5 @@
 # Class to create a Linked List aka Inventory
+
 class LinkedList:
 
 	def __init__(self):
@@ -27,13 +28,13 @@ class LinkedList:
 		else:
 			return curr_node.item
 
-	def add(self, item, name):
-		for i in range(len(self)):
-			if self[i] is not None and self[i].name == name:
-				self[i].amount += 1
+	def add(self, item, part_name):
+		for i in self:
+			if i.name == part_name:
+				i.amount += 1
 				return
-		new_node = Node(item, name)
-		new_node.amount += 1
+		new_node = Node(item, part_name)
+		item.amount += 1
 		new_node.next = self._head
 		self._head = new_node
 		self._size += 1
@@ -47,7 +48,7 @@ class LinkedList:
 
 		assert curr_node is not None, "The item must be in the bag."
 		if curr_node.name == name:
-			curr_node.amount -= 1
+			item.amount -= 1
 		else:
 			self._size -= 1
 			if curr_node is self._head:
@@ -59,7 +60,7 @@ class LinkedList:
 	def __iter__(self):
 		return ListIterator(self._head)
 
-	def __str__(self):
+	def __repr__(self):
 		string = ''
 		for i in self:
 			string += '{} {}\n'.format(i.amount, i.name)
@@ -70,7 +71,7 @@ class Node(object):
 
 	def __init__(self, item, name):
 		self.item = item
-		self.amount = 0
+		#self.amount = 0
 		self.name = name
 		self.next = None
 

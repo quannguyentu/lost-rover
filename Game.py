@@ -110,7 +110,7 @@ class Game:
         2 screws
         1 rug
       """
-        return self.rover.inventory
+        return str(self.rover.inventory)
 
     def pick_up(self):
         """ Called by GUI when button clicked.
@@ -122,7 +122,9 @@ class Game:
                 if isinstance(item, Parts):
                     self.rover.inventory.add(item, item.name)
                     self.current_room.items.remove(item)
-        print(self.rover.inventory)
+                else:
+                    pass
+
     def get_current_task(self):
         """ Called by GUI when task updates.
             Returns top task (as a string).
