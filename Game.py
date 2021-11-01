@@ -8,6 +8,7 @@ CSCI 204
 from gameboard import *
 from random import *
 from LinkedList import *
+from Stack import *
 
 
 class Game:
@@ -20,6 +21,9 @@ class Game:
         self.initial_room = Room(Game.SIZE)
         self.current_room = self.initial_room
         self.create_room(self.initial_room)
+        self.__undo_room = Stack()
+        self.tracked_flash = None
+        self.portal_list = []
 
     def create_room(self, room):
         if room == self.initial_room:
@@ -43,7 +47,6 @@ class Game:
     def get_rover_location(self):
         """ Called by GUI when screen updates.
             Returns location (as a Point). """
-        # Your code goes here, this code is just an example
         coordinate = self.rover.current_location()
         x = coordinate[0]
         y = coordinate[1]
@@ -101,7 +104,11 @@ class Game:
     def show_way_back(self):
         """ Called by GUI when button clicked.
             Flash the portal leading towards home. """
-        pass  # Your code goes here
+        if self.__undo_room.is_empty() is False:
+            # Flash the portal on top
+            curr_portal = self.__undo_room.peek()
+            curr_portal.flash()
+            self.tracked_flash = curr_portal
 
     def get_inventory(self):
         """ Called by GUI when inventory updates.
@@ -149,29 +156,45 @@ class Game:
                 item_portal_index.append(i)
         for i in item_portal_index:
             if self.rover.location == self.current_room.items[i].location:
-                if self.current_room.items[i].linked_portal is None:
-                    new_room = Room(15)
-                    new_portal = Portals()
-                    self.create_room(new_room)
-
-                    new_portal.location = self.current_room.items[i].location
-                    new_room.items.append(new_portal)
-
-                    self.current_room.items[i].linked_portal = new_portal
-                    new_portal.linked_portal = self.current_room.items[i]
-
-                    self.current_room.items[i].linked_room = new_room
-                    new_portal.linked_room = self.current_room
-
-                    self.current_room = new_room
+                portal = self.current_room.items[i]
+                # pop the portal after stepping on the portal to other room
+                if self.__undo_room.is_empty() is False and self.__undo_room.peek() is portal:
+                    self.__undo_room.pop()
+                if self.tracked_flash is not None:
+                    self.tracked_flash.unflash()
+                # Establish a new linked room if the portal doesnt have any linked room
+                if portal.linked_portal is None:
+                    self.link_portal(portal)
                     break
-
+                # Else go to the linked room
                 else:
-                    self.current_room = self.current_room.items[i].linked_room
+                    self.current_room = portal.linked_room
+                    if portal in self.portal_list:
+                        self.__undo_room.push(portal.linked_portal)
                     break
 
+    def link_portal(self, portal):
+        # Set up the new room
+        new_room = Room(15)
+        new_portal = Portals()
+        self.create_room(new_room)
+        # Create a new portal in the same location
+        new_portal.location = portal.location
+        new_room.items.append(new_portal)
+        self.__undo_room.push(new_portal)
+        # Link the two portal
+        portal.linked_portal = new_portal
+        new_portal.linked_portal = portal
+        # Link the room
+        portal.linked_room = new_room
+        new_portal.linked_room = self.current_room
+        # Go to the new room
+        self.current_room = new_room
+        self.portal_list.append(portal)
 
 # Put other classes here or in other files as needed.
+
+
 class Location:
     x = 0
     y = 0
@@ -249,7 +272,13 @@ class Portals(Items):
         self.linked_room = None
 
     def get_image(self):
-        return "portal.ppm"
+        return self.name + ".ppm"
+
+    def flash(self):
+        self.name = "portal-flashing"
+
+    def unflash(self):
+        self.name = "portal"
 
 
 class Parts(Items):
