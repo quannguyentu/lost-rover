@@ -28,6 +28,16 @@ class LinkedList:
 		else:
 			return curr_node.item
 
+	def index(self, target):
+		curr_node = self._head
+		index = 0
+		while (curr_node is not None) and (curr_node.item != target):
+			if curr_node.name == target:
+				return index
+			curr_node = curr_node.next
+			index += 1
+		return None
+
 	def add(self, item, part_name):
 		for i in self:
 			if i.name == part_name:
@@ -39,7 +49,7 @@ class LinkedList:
 		self._head = new_node
 		self._size += 1
 
-	def remove(self, item, name):
+	def remove(self, item, name=''):
 		prev_node = None
 		curr_node = self._head
 		while (curr_node is not None) and (curr_node.item != item):
@@ -47,7 +57,7 @@ class LinkedList:
 			curr_node = curr_node.next
 
 		assert curr_node is not None, "The item must be in the bag."
-		if curr_node.name == name:
+		if curr_node.name == name and item.amount >= 1:
 			item.amount -= 1
 		else:
 			self._size -= 1

@@ -5,10 +5,14 @@ Put the three ADTs in their own files.
 Team: Quan Nguyen Tu, Quan Zhou
 CSCI 204
 """
+
 from gameboard import *
 from random import *
 from LinkedList import *
 from Stack import *
+from Queue import *
+
+PARTS_NAME = ['gear', 'screw', 'cake', 'bagel', 'lettuce']
 
 
 class Game:
@@ -19,11 +23,13 @@ class Game:
         self.gui = GameBoard("Lost Rover", self, Game.SIZE)
         self.rover = Rover()
         self.initial_room = Room(Game.SIZE)
-        self.current_room = self.initial_room
         self.create_room(self.initial_room)
+        self.current_room = self.initial_room
         self.__undo_room = Stack()
         self.tracked_flash = None
         self.portal_list = []
+        self._tasks = Queue(3)
+        self.set_up_tasks()
 
     def create_room(self, room):
         if room == self.initial_room:
@@ -138,7 +144,10 @@ class Game:
         'Fix the engine using 2 cake, 3 rugs' or
         'You win!'
        """
-        pass  # Your code goes here
+        if self._tasks.is_empty():
+            return "You win!"
+        task = self._tasks.peek()
+        return str(task)
 
     def perform_task(self):
         """ Called by the GUI when button clicked.
@@ -146,9 +155,25 @@ class Game:
             is on the relevant broken ship piece, then fixes
             ship piece and removes parts from inventory. If
             we run out of tasks, we win. """
-        pass  # Your code goes here
-
+        task = self._tasks.peek()
+        if self.rover.location == task.ship_component.location:
+            req = task.get_requirements()
+            inv = self.rover.inventory
+            for b in inv:
+                if b.name in list(req.keys()):
+                    if b.amount >= req[b.name]:
+                        for x in range(req[b.name]):
+                            self.rover.inventory.remove(b, b.name)
+                        task.finish_requirements(b.name, True)
+                    else:
+                        for x in range(0, b.amount):
+                            self.rover.inventory.remove(b, b.name)
+                            task.finish_requirements(b.name)
+        if len(task.get_requirements()) == 0:
+            task.ship_component.fix_component()
+            self._tasks.dequeue()
     # Put other methods here as needed.
+
     def check_portal(self):
         item_portal_index = []
         for i in range(len(self.current_room.items)):
@@ -192,6 +217,12 @@ class Game:
         self.current_room = new_room
         self.portal_list.append(portal)
 
+    def set_up_tasks(self):
+        shuffle(self.initial_room.broken_components)
+        for i in range(3):
+            tasks = Task(self.initial_room.broken_components[i])
+            tasks.generate_task(3, 3)
+            self._tasks.enqueue(tasks)
 # Put other classes here or in other files as needed.
 
 
@@ -213,7 +244,7 @@ class Room:
         self.items = []
         self.num_portals = randint(2, 4)
         self.num_parts = randint(6, 12)
-        self.parts_name = ['gear', 'screw', 'cake', 'bagel', 'lettuce']
+        self.broken_components = []
 
     def set_up_portal(self):
         for i in range(self.num_portals):
@@ -223,11 +254,11 @@ class Room:
     # return self.items
 
     def set_up_parts(self):
-        for i in self.parts_name:
+        for i in PARTS_NAME:
             obj = Parts(i)
             self.items.append(obj)
-        for i in range(self.num_parts - len(self.parts_name)):
-            obj = Parts(choice(self.parts_name))
+        for i in range(self.num_parts - len(PARTS_NAME)):
+            obj = Parts(choice(PARTS_NAME))
             self.items.append(obj)
 
     def set_up_ship_components(self):
@@ -236,8 +267,9 @@ class Room:
         ship3 = ShipComponents(Location(6, 6), 'engine', 'broken')
         ship4 = ShipComponents(Location(6, 7), 'engine')
         ship5 = ShipComponents(Location(8, 6), 'exhaust')
-        ship6 = ShipComponents(Location(5, 6), 'exhaust', 'broken')
+        ship6 = ShipComponents(Location(7, 6), 'exhaust', 'broken')
         ship_components = [ship1, ship2, ship3, ship4, ship5, ship6]
+        self.broken_components += [ship1, ship3, ship6]
         for i in ship_components:
             self.items.append(i)
 
@@ -299,11 +331,50 @@ class ShipComponents(Items):
         i = self.name + self.state + '.ppm'
         return i
 
+    def fix_component(self):
+        self.state = ''
+
+
+class Task:
+    def __init__(self, ship_component):
+        self.task = {}
+        self.ship_component = ship_component
+
+    def generate_task(self, num_task, max_item):
+        req = {}
+        parts = PARTS_NAME
+        shuffle(parts)
+        for i in range(num_task):
+            req[parts[i]] = randint(1, max_item)
+        self.task[self.ship_component] = req
+        return self.task
+
+    def get_requirements(self):
+        return self.task[self.ship_component]
+
+    def finish_requirements(self, item, flag=False):
+        self.task[self.ship_component][item] -= 1
+        if self.task[self.ship_component][item] <= 0 or flag is True:
+            self.task[self.ship_component].pop(item)
+
+    def __str__(self):
+        req = ''
+        for i in self.task[self.ship_component]:
+            req += str(self.task[self.ship_component][i])
+            req += ' ' + i + '\n'
+        name = self.ship_component.get_image()[:-10]
+        return "{} Broken! To fix the {}, you will need:\n{} ". format(name.capitalize(), name, req)
+
 
 class Rover:
     def __init__(self):
         self.location = Location(randint(0, (Game.SIZE - 1)), randint(0, (Game.SIZE - 1)))
         self.inventory = LinkedList()
+        # # Test case
+        # for i in range(100):
+        #     for x in PARTS_NAME:
+        #         part = Parts(x)
+        #         self.inventory.add(part, x)
 
     def current_location(self):
         """Get the current coordination in the tuple format (x,y)"""
