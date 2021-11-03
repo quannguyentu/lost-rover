@@ -17,6 +17,7 @@ PARTS_NAME = ['gear', 'screw', 'cake', 'bagel', 'lettuce']
 
 class Game:
     SIZE = 15  # rooms are 15x15
+    STATE = False # Determine wining state of the game
 
     def __init__(self):
         # put other instance variables here
@@ -29,6 +30,8 @@ class Game:
         self.tracked_flash = None
         self.portal_list = []
         self._tasks = Queue(3)
+        self.step = 0
+        self.max_step = 10
         self.set_up_tasks()
 
     def create_room(self, room):
@@ -84,12 +87,14 @@ class Game:
             on a portal, it will teleport. """
         self.rover.go_up()
         self.check_portal()
+        self.step_add()
 
     def go_down(self):
         """ Called by GUI when button clicked.
             If legal, moves rover. If the robot lands
             on a portal, it will teleport. """
         self.rover.go_down()
+        self.step_add()
         self.check_portal()
 
     def go_left(self):
@@ -97,6 +102,7 @@ class Game:
             If legal, moves rover. If the robot lands
             on a portal, it will teleport. """
         self.rover.go_left()
+        self.step_add()
         self.check_portal()
 
     def go_right(self):
@@ -105,6 +111,7 @@ class Game:
             on a portal, it will teleport. """
         # Your code goes here
         self.rover.go_right()
+        self.step_add()
         self.check_portal()
 
     def show_way_back(self):
@@ -145,9 +152,11 @@ class Game:
         'You win!'
        """
         if self._tasks.is_empty():
+            self.STATE = True
             return "You win!"
         task = self._tasks.peek()
-        return str(task)
+        step = 'After {} more step, a component will be broken!'.format(self.max_step - self.step)
+        return str(task) + step
 
     def perform_task(self):
         """ Called by the GUI when button clicked.
@@ -171,6 +180,7 @@ class Game:
                             task.finish_requirements(b.name)
         if len(task.get_requirements()) == 0:
             task.ship_component.fix_component()
+            self.initial_room.working_components.append(task.ship_component)
             self._tasks.dequeue()
     # Put other methods here as needed.
 
@@ -219,10 +229,23 @@ class Game:
 
     def set_up_tasks(self):
         shuffle(self.initial_room.broken_components)
-        for i in range(3):
+        for i in range(2):
             tasks = Task(self.initial_room.broken_components[i])
-            tasks.generate_task(3, 3)
+            tasks.generate_task(3, 4)
             self._tasks.enqueue(tasks)
+
+    def step_add(self):
+        if self.STATE is True:
+            return
+        if self.step < self.max_step:
+            self.step += 1
+        elif self.step >= self.max_step and self._tasks.is_full() is False:
+            self.step = 0
+            shuffle(self.initial_room.working_components)
+            broken_comp = self.initial_room.working_components.pop().break_component()
+            task = Task(broken_comp)
+            task.generate_task(3, 4)
+            self._tasks.enqueue(task)
 # Put other classes here or in other files as needed.
 
 
@@ -245,6 +268,7 @@ class Room:
         self.num_portals = randint(2, 4)
         self.num_parts = randint(6, 12)
         self.broken_components = []
+        self.working_components = []
 
     def set_up_portal(self):
         for i in range(self.num_portals):
@@ -270,6 +294,7 @@ class Room:
         ship6 = ShipComponents(Location(7, 6), 'exhaust', 'broken')
         ship_components = [ship1, ship2, ship3, ship4, ship5, ship6]
         self.broken_components += [ship1, ship3, ship6]
+        self.working_components += [ship2, ship4, ship5]
         for i in ship_components:
             self.items.append(i)
 
@@ -334,6 +359,10 @@ class ShipComponents(Items):
     def fix_component(self):
         self.state = ''
 
+    def break_component(self):
+        self.state = 'broken'
+        return self
+
 
 class Task:
     def __init__(self, ship_component):
@@ -370,11 +399,11 @@ class Rover:
     def __init__(self):
         self.location = Location(randint(0, (Game.SIZE - 1)), randint(0, (Game.SIZE - 1)))
         self.inventory = LinkedList()
-        # # Test case
-        # for i in range(100):
-        #     for x in PARTS_NAME:
-        #         part = Parts(x)
-        #         self.inventory.add(part, x)
+        # Test case
+        for i in range(100):
+            for x in PARTS_NAME:
+                part = Parts(x)
+                self.inventory.add(part, x)
 
     def current_location(self):
         """Get the current coordination in the tuple format (x,y)"""
