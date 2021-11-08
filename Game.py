@@ -2,7 +2,7 @@
 To make more ppm files, open a gif or jpg in xv and save as ppm raw.
 Put the three ADTs in their own files.
 
-Team: Quan Nguyen Tu, Quan Zhou
+Name: Quan Nguyen Tu
 CSCI 204
 """
 
@@ -17,7 +17,7 @@ PARTS_NAME = ['gear', 'screw', 'cake', 'bagel', 'lettuce']
 
 class Game:
     SIZE = 15  # rooms are 15x15
-    STATE = False # Determine wining state of the game
+    STATE = False  # Determine wining state of the game
 
     def __init__(self):
         # put other instance variables here
@@ -31,10 +31,10 @@ class Game:
         self.portal_list = []
         self._tasks = Queue(3)
         self.step = 0
-        self.max_step = 10
+        self.max_step = 50
         self.set_up_tasks()
 
-    def create_room(self, room):
+    def create_room(self, room, num=0):
         if room == self.initial_room:
             room.set_up_portal()
             room.set_up_parts()
@@ -42,6 +42,7 @@ class Game:
         else:
             room.set_up_portal()
             room.set_up_parts()
+            room.room_num = num
 
     def start_game(self):
         self.gui.run()
@@ -207,12 +208,13 @@ class Game:
                     if portal in self.portal_list:
                         self.__undo_room.push(portal.linked_portal)
                     break
+        self.gui.room_num = self.current_room.room_num
 
     def link_portal(self, portal):
         # Set up the new room
         new_room = Room(15)
         new_portal = Portals()
-        self.create_room(new_room)
+        self.create_room(new_room, self.current_room.room_num + 1)
         # Create a new portal in the same location
         new_portal.location = portal.location
         new_room.items.append(new_portal)
@@ -225,6 +227,7 @@ class Game:
         new_portal.linked_room = self.current_room
         # Go to the new room
         self.current_room = new_room
+        # self.gui.room_num = self.current_room.room_num
         self.portal_list.append(portal)
 
     def set_up_tasks(self):
@@ -262,27 +265,54 @@ class Location:
 
 
 class Room:
-    def __init__(self, size):
+    def __init__(self, size, num=0):
         self.size = size
         self.items = []
         self.num_portals = randint(2, 4)
         self.num_parts = randint(6, 12)
         self.broken_components = []
         self.working_components = []
+        self.room_num = num
+
+        self.ava_loc_list = []
+
+        for i in range(15):
+            for j in range(15):
+                self.ava_loc_list.append([i, j])
 
     def set_up_portal(self):
         for i in range(self.num_portals):
             obj = Portals()
+            location = sample(self.ava_loc_list, 1)
+            x = location[0][0]
+            y = location[0][1]
+            obj.location.x = x
+            obj.location.y = y
+            self.ava_loc_list.remove(location[0])
+
             self.items.append(obj)
 
-    # return self.items
+        # return self.items
 
     def set_up_parts(self):
         for i in PARTS_NAME:
             obj = Parts(i)
+            location = sample(self.ava_loc_list, 1)
+            x = location[0][0]
+            y = location[0][1]
+            obj.location.x = x
+            obj.location.y = y
+            self.ava_loc_list.remove(location[0])
+
             self.items.append(obj)
         for i in range(self.num_parts - len(PARTS_NAME)):
             obj = Parts(choice(PARTS_NAME))
+            location = sample(self.ava_loc_list, 1)
+            x = location[0][0]
+            y = location[0][1]
+            obj.location.x = x
+            obj.location.y = y
+            self.ava_loc_list.remove(location[0])
             self.items.append(obj)
 
     def set_up_ship_components(self):
@@ -296,10 +326,12 @@ class Room:
         self.broken_components += [ship1, ship3, ship6]
         self.working_components += [ship2, ship4, ship5]
         for i in ship_components:
+            x = i.location.x
+            y = i.location.y
+            self.ava_loc_list.remove([x, y])
             self.items.append(i)
 
     def get_item(self, point):
-
         for i in range(len(self.items)):
             if type(self.items[i]) == int:
                 pass
@@ -399,11 +431,11 @@ class Rover:
     def __init__(self):
         self.location = Location(randint(0, (Game.SIZE - 1)), randint(0, (Game.SIZE - 1)))
         self.inventory = LinkedList()
-        # Test case
-        for i in range(100):
-            for x in PARTS_NAME:
-                part = Parts(x)
-                self.inventory.add(part, x)
+        # # Test case
+        # for i in range(100):
+        #     for x in PARTS_NAME:
+        #         part = Parts(x)
+        #         self.inventory.add(part, x)
 
     def current_location(self):
         """Get the current coordination in the tuple format (x,y)"""

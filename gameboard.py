@@ -30,7 +30,8 @@ any platform where Tkinter is available.
 INSTALLATION: Put this file somewhere where Python can see it. Also get a
 copy of graphics.py as mentioned above.
 
-CREDITS: Original file by Lea Wittie. Bug in quit function fixed by Matt Rogge '17
+CREDITS: Original file by Lea Wittie. Bug in quit function fixed by Matt Rogge '17. Modified for own project by Quan
+Nguyen Tu '24
 """
 from graphics import *
 from functools import partial
@@ -40,7 +41,7 @@ class GameBoard:
         and many buttons. """
 
     # draw the board
-    def __init__(self, title, game, size, bkColor='SteelBlue', buttonColor='LightSalmon'):
+    def __init__(self, title, game, size, bkColor='lightslategray', buttonColor='orange'):
         """ Takes a title to display on top of the window.
             Takes a game which implements the following methods:
                 go_left(), go_right(), go_up(), go_down(), show_way_back(), pick_up(), perform_task()
@@ -53,6 +54,8 @@ class GameBoard:
         self.game = game
         self.window = GraphWin(title, width, height)
         self.window.setBackground(bkColor)
+
+        self.room_num = 0
 
         sideOffset = 10  # offset from sides
         lineSpace = 25   # vertical offset between lines
@@ -81,9 +84,9 @@ class GameBoard:
         mapY = sideOffset + lineSpace + taskHeight + lineSpace
         self.mapRectX = mapX
         self.mapRectY = mapY + lineSpace
-        mapLabel = Text(Point(mapX, mapY), "Map of room")
-        mapLabel.setStyle('bold')
-        mapLabel.draw(self.window)
+        self.mapLabel = Text(Point(mapX, mapY), "Map of room {}". format(self.room_num))
+        self.mapLabel.setStyle('bold')
+        self.mapLabel.draw(self.window)
         self.mapRect = Rectangle(Point(mapX, mapY + lineSpace),
                             Point(mapX + self.mapSize,
                                   mapY + lineSpace + self.mapSize))
@@ -229,6 +232,12 @@ class GameBoard:
             self.invWin.config["text"] = invText
             self.invWin.draw(self.window)
 
+        # # Draw map label
+        # mapLabel = Text(Point(self.mapRectX, self.mapRectY-25), "Map of room {}".format(self.room_num))
+        self.mapLabel.undraw()
+        self.mapLabel = Text(Point(self.mapRectX, self.mapRectY - 25), "Map of room {}".format(self.room_num))
+        self.mapLabel.setStyle('bold')
+        self.mapLabel.draw(self.window)
         self.isUpdating = False
 
     def nothing(self):
